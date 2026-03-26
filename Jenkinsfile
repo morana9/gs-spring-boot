@@ -1,47 +1,30 @@
-pipeline {
+ pipeline {
     agent any
 
-    tools {
-        maven '3.9.11'
-    }
-
     stages {
-        stage('Checkout Source Code') {
+        stage('Build') {
             steps {
-                git branch: 'main', url: 'https://github.com/morana9/gs-spring-boot.git'
+                sh 'chmod +x mvnw'
+                sh './mvnw clean package'
             }
         }
 
-        stage('Test') {
+        stage('Verify Jar') {
             steps {
-                sh 'git --version'
-                sh 'mvn --version'
-                sh 'mvn clean test'
+                sh 'ls -l target'
             }
         }
 
-        stage('Build and Package') {
+        stage('Upload to Nexus') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh '''
+                JAR_FILE=$(ls target/*.jar | head -n 1)
+                curl -v -u admin:Ilovejoji18 \
+                  --upload-file "$JAR_FILE" \
+                  http://nexus:8081/repository/maven-releases/com/example/app/1.0/app-1.0.jar
+                '''
             }
-        }
-
-        stage('Archive Artifacts') {
-            steps {
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
-        }
-    }
-
-    post {
-        always {
-            echo 'Pipeline finished.'
-        }
-        success {
-            echo 'Build successful!'
-        }
-        failure {
-            echo 'Build failed!'
         }
     }
 }
+
